@@ -695,6 +695,23 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   int mods = (int) [pEvent modifierFlags];
   info.ms = IMouseMod(true, (mods & NSCommandKeyMask), (mods & NSShiftKeyMask), (mods & NSControlKeyMask), (mods & NSAlternateKeyMask));
 
+  NSUInteger buttons = [NSEvent pressedMouseButtons];
+
+  bool isLeftMouseDown  = (buttons & (1 << 0)) != 0;
+  bool isRightMouseDown = (buttons & (1 << 1)) != 0;
+
+  // If command key is down, we treat the states as reversed
+  if (mods & NSCommandKeyMask) {
+    info.ms.L = isRightMouseDown;
+    info.ms.R = isLeftMouseDown;
+  }
+
+  // Otherwise, we treat the situation as normal
+  else {
+    info.ms.L = isLeftMouseDown;
+    info.ms.R = isRightMouseDown;
+  }
+
   return info;
 }
 
@@ -750,7 +767,9 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 - (void) mouseDown: (NSEvent*) pEvent
 {
+
   IMouseInfo info = [self getMouseLeft:pEvent];
+
   if (mGraphics)
   {
     if (([pEvent clickCount] - 1) % 2)
@@ -796,32 +815,16 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   }
 }
 
-- (void) rightMouseDown: (NSEvent*) pEvent
+- (void)rightMouseDown:(NSEvent*)event
 {
-  IMouseInfo info = [self getMouseRight:pEvent];
-  if (mGraphics)
-  {
-    if (([pEvent clickCount] - 1) % 2)
-    {
-      mGraphics->OnMouseDblClick(info.x, info.y, info.ms);
-    }
-    else
-    {
-      std::vector<IMouseInfo> list {info};
-      mGraphics->OnMouseDown(list);
-    }
-  }
+  [self mouseDown:event];
 }
 
-- (void) rightMouseUp: (NSEvent*) pEvent
+- (void)rightMouseUp:(NSEvent*)event
 {
-  IMouseInfo info = [self getMouseRight:pEvent];
-  if (mGraphics)
-  {
-    std::vector<IMouseInfo> list {info};
-    mGraphics->OnMouseUp(list);
-  }
+  [self mouseUp:event];
 }
+
 
 - (void) rightMouseDragged: (NSEvent*) pEvent
 {
